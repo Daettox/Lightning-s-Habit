@@ -27,12 +27,20 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          npm install -g @capacitor/assets
           npm install
 
       - name: Initialize Capacitor and Sync
         run: |
           npx cap init "Lightning's Habit" "com.lightningshabit.app" --web-dir www
           npx cap add android
+
+      - name: Generate App Icons
+        run: |
+          npx @capacitor/assets generate --android
+
+      - name: Sync Android Project
+        run: |
           npx cap copy android
           npx cap sync android
 
