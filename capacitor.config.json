@@ -1,6 +1,6 @@
 {
-  "appId": "com.myapp.app",
-  "appName": "My App",
+  "appId": "com.daettox.lightningshabit",
+  "appName": "Lightnings Habit",
   "webDir": ".",
   "bundledWebRuntime": false
 }
