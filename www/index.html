@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Lightning's Habits</title>
+<style>
+  /* ===== Base Styles & Theme Variables ===== */
+  :root {
+    --bg: #f5f7f5;
+    --surface: #ffffff;
+    --text: #1f2a1f;
+    --text-muted: #6b7a6b;
+    --border: #e4ebe4;
+    --green: #2ecc71;
+    --green-dark: #27ae60;
+    --green-light: #e8f8ef;
+    --red: #ef4444;
+    --excused: #94a3b8;
+    --shadow: 0 2px 8px rgba(46, 204, 113, 0.08);
+    --shadow-strong: 0 4px 14px rgba(46, 204, 113, 0.15);
+  }
+
+  [data-theme="dark"] {
+    --bg: #0f1410;
+    --surface: #1a201a;
+    --text: #e8f0e8;
+    --text-muted: #8a9a8a;
+    --border: #2a332a;
+    --green: #4ade80;
+    --green-dark: #22c55e;
+    --green-light: #1a2e20;
+    --red: #f87171;
+    --excused: #475569;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-strong: 0 4px 14px rgba(74, 222, 128, 0.15);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+    padding-bottom: 80px; /* Space for bottom nav */
+  }
+
+  /* ===== App Container (Mobile) ===== */
+  .app {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+    min-height: 100vh;
+  }
+
+  /* ===== Views ===== */
+  .view {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .view.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== Header ===== */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 8px 4px;
+  }
+
+  .app-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+
+  .app-title .accent {
+    color: var(--green);
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+
+  .theme-toggle:active {
+    transform: scale(0.92);
+  }
+
+  /* ===== Add Habit Section ===== */
+  .add-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .add-inputs-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .add-input {
+    flex: 1 1 auto;
+    min-width: 100px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .add-input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-light);
+  }
+
+  .add-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .add-select {
+    flex: 0 0 auto;
+    padding: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .add-select:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px var(--green-light);
+  }
+  
+  #habitIcon {
+    padding: 12px 8px;
+    font-size: 16px;
+  }
+
+  .add-btn {
+    width: 100%;
+    height: 48px;
+    border: none;
+    border-radius: 12px;
+    background: var(--green);
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s ease, background 0.2s ease;
+  }
+
+  .add-btn:hover {
+    background: var(--green-dark);
+  }
+
+  .add-btn:active {
+    transform: scale(0.98);
+  }
+
+  /* ===== List Title ===== */
+  .list-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding: 0 4px;
+  }
+
+  /* ===== Empty State ===== */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .empty-state .emoji {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+    opacity: 0.6;
+  }
+
+  /* ===== Habit Card ===== */
+  .habit-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    cursor: pointer;
+  }
+
+  .habit-card:active {
+    transform: scale(0.98);
+  }
+
+  .habit-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+
+  .habit-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+    flex: 1;
+  }
+
+  .habit-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Streak Counter */
+  .streak {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    background: var(--green-light);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .streak-num {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--green-dark);
+  }
+
+  [data-theme="dark"] .streak-num {
+    color: var(--green);
+  }
+
+  .streak-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* Delete Button */
+  .delete-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    color: var(--text-muted);
+  }
+
+  .delete-btn:hover {
+    background: var(--green-light);
+  }
+
+  /* ===== 7 Days Row ===== */
+  .days-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .day-cell {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .day-circle {
+    min-width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    border: 2px solid var(--border);
+    background: transparent;
+    transition: all 0.2s ease;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    cursor: pointer;
+  }
+
+  .day-circle.filled {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .day-circle.filled::after {
+    content: "✓";
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .day-circle.failed {
+    background: var(--red);
+    border-color: var(--red);
+  }
+  .day-circle.failed::after {
+    content: "✗";
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  
+  .day-circle.excused {
+    background: var(--excused);
+    border-color: var(--excused);
+  }
+  .day-circle.excused::after {
+    content: "-";
+    color: white;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .day-circle.numeric-filled {
+    background: var(--green);
+    border-color: var(--green);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .day-circle.today {
+    border-color: var(--green);
+    border-width: 2px;
+    box-shadow: 0 0 0 3px var(--green-light);
+  }
+
+  .day-circle:hover { transform: scale(1.08); }
+  .day-circle:active { transform: scale(0.95); }
+
+  .day-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .day-label.today-label {
+    color: var(--green-dark);
+    font-weight: 700;
+  }
+
+  [data-theme="dark"] .day-label.today-label {
+    color: var(--green);
+  }
+
+  /* ===== Jar Section ===== */
+  .jar-header {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 24px;
+    margin-top: 10px;
+  }
+  
+  .jar-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .jar {
+    width: 200px;
+    height: 250px;
+    border: 4px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 40px 40px;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    align-content: flex-start;
+    justify-content: center;
+    padding: 15px;
+    gap: 2px;
+    background: rgba(46, 204, 113, 0.05);
+    box-shadow: inset 0 -10px 30px rgba(0,0,0,0.02);
+    transition: transform 0.15s ease;
+  }
+
+  .jar::before {
+    content: '';
+    position: absolute;
+    top: -12px;
+    left: -16px;
+    right: -16px;
+    height: 12px;
+    border: 4px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+  }
+
+  .jar:active {
+    transform: scale(0.96);
+  }
+
+  .jar-star {
+    font-size: 24px;
+    animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes dropIn {
+    0% { transform: translateY(-100px) scale(0); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  .jar-status {
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 30px;
+    font-size: 16px;
+  }
+
+  .storage-btn {
+    display: block;
+    width: 100%;
+    max-width: 250px;
+    margin: 0 auto;
+    padding: 14px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .storage-btn:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+  
+  .storage-btn:active {
+    transform: scale(0.96);
+  }
+
+  .storage-jars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .mini-jar {
+    width: 44px;
+    height: 54px;
+    border: 2px solid var(--green);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    position: relative;
+    background: var(--green-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--green-dark);
+  }
+
+  .mini-jar::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    height: 4px;
+    border: 2px solid var(--green);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+
+  /* ===== Bottom Navigation ===== */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
+    z-index: 100;
+  }
+
+  [data-theme="dark"] .bottom-nav {
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  }
+
+  .nav-item {
+    font-size: 26px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 10px 30px;
+    transition: color 0.2s, transform 0.2s;
+  }
+
+  .nav-item.active {
+    color: var(--green);
+    transform: scale(1.1);
+  }
+
+  /* ===== Confetti ===== */
+  .confetti {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    pointer-events: none;
+    z-index: 9999;
+    border-radius: 2px;
+    animation: confettiFall 1.2s ease-out forwards;
+  }
+
+  @keyframes confettiFall {
+    0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) rotate(720deg); opacity: 0; }
+  }
+
+  /* ===== Modals ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    padding: 20px;
+  }
+
+  .modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 320px;
+    width: 100%;
+    box-shadow: var(--shadow-strong);
+    transform: scale(0.9);
+    transition: transform 0.2s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal.stats-modal { max-width: 360px; }
+
+  .modal-overlay.active .modal { transform: scale(1); }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+    text-align: center;
+  }
+
+  .modal-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+  }
+
+  .modal-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+  }
+
+  .modal-btn.cancel {
+    background: var(--border);
+    color: var(--text);
+    flex: 1;
+  }
+
+  .modal-btn.confirm {
+    background: var(--red);
+    color: white;
+    flex: 1;
+  }
+
+  .modal-btn:active { transform: scale(0.96); }
+
+  /* ===== Stats Calendar ===== */
+  .calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  
+  .cal-nav {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+  }
+  
+  .cal-nav:hover { color: var(--text); }
+
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .cal-day-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    transition: all 0.15s ease;
+    color: var(--text);
+  }
+
+  .cal-cell:hover { border-color: var(--green); }
+  .cal-cell:active { transform: scale(0.9); }
+
+  .cal-cell.done {
+    background: var(--green);
+    color: white;
+    border-color: var(--green);
+    font-weight: bold;
+  }
+
+  .cal-cell.failed {
+    background: var(--red);
+    color: white;
+    border-color: var(--red);
+    font-weight: bold;
+  }
+  
+  .cal-cell.excused {
+    background: var(--excused);
+    color: white;
+    border-color: var(--excused);
+    font-weight: bold;
+  }
+
+  /* ===== Charts ===== */
+  .stats-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+
+  .chart-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 10px 0;
+  }
+
+  .pie-chart {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+  }
+
+  .chart-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1 class="app-title">Lightning's <span class="accent">Habits</span></h1>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
+    </header>
+
+    <!-- VIEWS CONTAINER -->
+    <!-- View 1: Habits -->
+    <div id="viewHabits" class="view active">
+      <!-- Add New Habit Section -->
+      <div class="add-section">
+        <div class="add-inputs-row">
+          <select id="habitIcon" class="add-select">
+            <option value="🦷">🦷</option>
+            <option value="💧">💧</option>
+            <option value="🏃">🏃</option>
+            <option value="💻">💻</option>
+            <option value="📚">📚</option>
+            <option value="🏠">🏠</option>
+            <option value="🏆">🏆</option>
+            <option value="🧘">🧘</option>
+            <option value="🎸">🎸</option>
+          </select>
+          <input
+            type="text"
+            class="add-input"
+            id="habitInput"
+            placeholder="New habit name..."
+            maxlength="40"
+          />
+          <select id="habitType" class="add-select">
+            <option value="boolean">Yes/No</option>
+            <option value="numeric">Numeric</option>
+          </select>
+        </div>
+        <button class="add-btn" id="addBtn">Create</button>
+      </div>
+
+      <!-- List Title -->
+      <div class="list-title">My Habits</div>
+
+      <!-- Habits Container -->
+      <div id="habitsList"></div>
+    </div>
+
+    <!-- View 2: Jar -->
+    <div id="viewJar" class="view">
+      <div class="jar-header">Star Jar</div>
+      
+      <div class="jar-wrapper">
+        <div class="jar" id="starJar">
+          <!-- Stars appended here via JS -->
+        </div>
+      </div>
+      
+      <div class="jar-status" id="jarStatus">0 / 30</div>
+      
+      <button class="storage-btn" id="storageBtn">Storage</button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" data-target="viewHabits">☰</div>
+    <div class="nav-item" data-target="viewJar">★</div>
+  </nav>
+
+  <!-- Delete Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-title">Delete habit?</div>
+      <div class="modal-text" id="modalText">This action cannot be undone.</div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="modalCancel">Cancel</button>
+        <button class="modal-btn confirm" id="modalConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Modal -->
+  <div class="modal-overlay" id="statsOverlay">
+    <div class="modal stats-modal">
+      <div class="modal-title" id="statsTitle">Statistics</div>
+      
+      <div class="stats-section-title">Calendar</div>
+      <div id="statsCalendarContainer"></div>
+      
+      <div class="stats-section-title">Completion Chart</div>
+      <div id="statsChartContainer"></div>
+      
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="statsClose" style="flex: none; width: 100%;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Storage Modal -->
+  <div class="modal-overlay" id="storageOverlay">
+    <div class="modal">
+      <div class="modal-title">Jar Storage</div>
+      <div class="modal-text" id="storageText">You haven't filled any jars yet.</div>
+      <div id="storageJarsContainer" class="storage-jars"></div>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="storageClose" style="flex: none; width: 100%;">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const STORAGE_KEY = 'lightning_habits_v3';
+const THEME_KEY = 'lightning_theme_v3';
+const JAR_STORAGE_KEY = 'lightning_jars_v1';
+
+const habitsListEl = document.getElementById('habitsList');
+const habitInputEl = document.getElementById('habitInput');
+const habitTypeEl = document.getElementById('habitType');
+const habitIconEl = document.getElementById('habitIcon');
+const addBtnEl = document.getElementById('addBtn');
+const themeToggleEl = document.getElementById('themeToggle');
+
+// Modals
+const modalOverlayEl = document.getElementById('modalOverlay');
+const modalTextEl = document.getElementById('modalText');
+const modalCancelEl = document.getElementById('modalCancel');
+const modalConfirmEl = document.getElementById('modalConfirm');
+const statsOverlayEl = document.getElementById('statsOverlay');
+const statsCloseEl = document.getElementById('statsClose');
+const statsCalendarContainer = document.getElementById('statsCalendarContainer');
+const statsChartContainer = document.getElementById('statsChartContainer');
+
+let habits = {};
+let pendingDelete = null;
+let currentStatsHabit = null;
+let currentStatsDate = new Date();
+let lastRenderedDate = getToday();
+
+// Date Utilities
+function getToday() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getDateDaysAgo(daysAgo) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function getDayLabel(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = String(d.getDate()).padStart(2, '0');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[d.getMonth()];
+  return `<span>${day}</span><span>${month}</span>`;
+}
+
+// Auto Date Check
+function checkDateChange() {
+  const current = getToday();
+  if (current !== lastRenderedDate) {
+    lastRenderedDate = current;
+    render();
+    if (statsOverlayEl.classList.contains('active')) {
+      renderStats();
+    }
+  }
+}
+setInterval(checkDateChange, 60000);
+window.addEventListener('focus', checkDateChange);
+
+// LocalStorage - Habits
+function loadHabits() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      habits = JSON.parse(raw);
+    } else {
+      habits = {};
+    }
+  } catch (e) {
+    habits = {};
+  }
+}
+
+function saveHabits() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(habits));
+}
+
+function calculateStreak(habit) {
+  const dates = habit.dates || [];
+  const excused = habit.excused || [];
+  if (dates.length === 0) return 0;
+  
+  let streak = 0;
+  let checkDate = new Date();
+  let todayStr = getToday();
+  
+  if (dates.includes(todayStr)) {
+      streak++;
+  } else if (excused.includes(todayStr)) {
+      // Maintains streak
+  }
+  
+  checkDate.setDate(checkDate.getDate() - 1);
+  for (let i = 0; i < 1000; i++) { 
+      let dStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+      
+      if (dates.includes(dStr)) {
+          streak++;
+      } else if (excused.includes(dStr)) {
+          // Excuse maintains
+      } else {
+          break;
+      }
+      checkDate.setDate(checkDate.getDate() - 1);
+  }
+  return streak;
+}
+
+// Render List
+function render() {
+  const list = Object.keys(habits).map(name => ({
+    name,
+    icon: habits[name].icon || '',
+    type: habits[name].type || 'boolean',
+    dates: habits[name].dates || [],
+    fails: habits[name].fails || [],
+    excused: habits[name].excused || [],
+    records: habits[name].records || {},
+    streak: calculateStreak(habits[name])
+  }));
+
+  if (list.length === 0) {
+    habitsListEl.innerHTML = `
+      <div class="empty-state">
+        <span class="emoji">🌱</span>
+        No habits yet. Add your first one!
+      </div>
+    `;
+    return;
+  }
+
+  habitsListEl.innerHTML = list.map(habit => {
+    const daysHtml = [];
+    for (let i = 0; i < 7; i++) {
+      const dateStr = getDateDaysAgo(i);
+      const isDone = habit.dates.includes(dateStr);
+      const isFailed = habit.fails.includes(dateStr);
+      const isExcused = habit.excused.includes(dateStr);
+      const isToday = i === 0;
+
+      let filledClass = '';
+      if (isDone) filledClass = habit.type === 'numeric' ? 'numeric-filled' : 'filled';
+      else if (isFailed) filledClass = 'failed';
+      else if (isExcused) filledClass = 'excused';
+      
+      const todayClass = isToday ? 'today' : '';
+      const labelClass = isToday ? 'today-label' : '';
+      const displayValue = (habit.type === 'numeric' && isDone) ? escapeHtml(String(habit.records[dateStr])) : '';
+
+      daysHtml.push(`
+        <div class="day-cell">
+          <div class="day-circle ${filledClass} ${todayClass}" data-habit="${escapeAttr(habit.name)}" data-date="${dateStr}">
+               ${displayValue}
+          </div>
+          <div class="day-label ${labelClass}">${getDayLabel(dateStr)}</div>
+        </div>
+      `);
+    }
+
+    const displayName = habit.icon ? `${habit.icon} ${escapeHtml(habit.name)}` : escapeHtml(habit.name);
+
+    return `
+      <div class="habit-card">
+        <div class="habit-top">
+          <div class="habit-name">${displayName}</div>
+          <div class="habit-right">
+            <div class="streak">
+              <span class="streak-num">${habit.streak}</span>
+              <span class="streak-label">${habit.streak === 1 ? 'day' : 'days'}</span>
+            </div>
+            <button class="delete-btn" data-delete="${escapeAttr(habit.name)}" aria-label="Delete">🗑️</button>
+          </div>
+        </div>
+        <div class="days-row">${daysHtml.join('')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function addHabit() {
+  const name = habitInputEl.value.trim();
+  const type = habitTypeEl.value; 
+  const icon = habitIconEl.value;
+  
+  if (!name) { habitInputEl.focus(); return; }
+  if (habits[name]) { habitInputEl.value = ''; habitInputEl.focus(); return; }
+
+  habits[name] = { type: type, icon: icon, dates: [], fails: [], excused: [], records: {} };
+  saveHabits();
+  habitInputEl.value = '';
+  render();
+}
+
+function openDeleteModal(name) {
+  pendingDelete = name;
+  modalTextEl.textContent = `"${name}" and all its data will be removed.`;
+  modalOverlayEl.classList.add('active');
+}
+
+function closeDeleteModal() {
+  pendingDelete = null;
+  modalOverlayEl.classList.remove('active');
+}
+
+function confirmDelete() {
+  if (pendingDelete && habits[pendingDelete]) {
+    delete habits[pendingDelete];
+    saveHabits();
+    render();
+  }
+  closeDeleteModal();
+}
+
+function openStatsModal(habitName) {
+  const realName = Object.keys(habits).find(k => {
+      const display = habits[k].icon ? `${habits[k].icon} ${k}` : k;
+      return display === habitName;
+  }) || habitName;
+
+  if(!habits[realName]) return;
+  currentStatsHabit = realName;
+  currentStatsDate = new Date();
+  document.getElementById('statsTitle').textContent = habitName;
+  renderStats();
+  statsOverlayEl.classList.add('active');
+}
+
+function closeStatsModal() {
+  currentStatsHabit = null;
+  statsOverlayEl.classList.remove('active');
+}
+
+function changeStatsMonth(delta) {
+  currentStatsDate.setMonth(currentStatsDate.getMonth() + delta);
+  renderStats();
+}
+
+function renderStats() {
+  if (!currentStatsHabit || !habits[currentStatsHabit]) return;
+  const habit = habits[currentStatsHabit];
+  const y = currentStatsDate.getFullYear();
+  const m = currentStatsDate.getMonth();
+  
+  const firstDay = new Date(y, m, 1).getDay();
+  const emptyCells = firstDay === 0 ? 6 : firstDay - 1; 
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  let calHtml = `
+    <div class="calendar-header">
+      <button class="cal-nav" onclick="changeStatsMonth(-1)">◀</button>
+      <span>${monthNames[m]} ${y}</span>
+      <button class="cal-nav" onclick="changeStatsMonth(1)">▶</button>
+    </div>
+    <div class="calendar-grid">
+      <div class="cal-day-name">Mon</div><div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
+      <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div><div class="cal-day-name">Sat</div><div class="cal-day-name">Sun</div>
+  `;
+
+  for(let i = 0; i < emptyCells; i++) calHtml += `<div></div>`;
+  for(let i = 1; i <= daysInMonth; i++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+    let cls = 'cal-cell';
+    if (habit.dates?.includes(dateStr)) cls += ' done';
+    else if (habit.fails?.includes(dateStr)) cls += ' failed';
+    else if (habit.excused?.includes(dateStr)) cls += ' excused';
+    calHtml += `<div class="${cls}" data-stats-date="${dateStr}">${i}</div>`;
+  }
+  calHtml += `</div>`;
+  statsCalendarContainer.innerHTML = calHtml;
+
+  const doneCount = (habit.dates || []).length;
+  const failCount = (habit.fails || []).length;
+  const excusedCount = (habit.excused || []).length;
+  const total = doneCount + failCount + excusedCount;
+
+  if (total === 0) {
+    statsChartContainer.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding: 20px 0;">No data to display</div>`;
+  } else {
+    const donePct = (doneCount / total) * 100;
+    const failPct = (failCount / total) * 100;
+    statsChartContainer.innerHTML = `
+      <div class="chart-wrapper">
+        <div class="pie-chart" style="background: conic-gradient(
+          var(--green) 0% ${donePct}%, 
+          var(--red) ${donePct}% ${donePct + failPct}%, 
+          var(--excused) ${donePct + failPct}% 100%
+        );"></div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-color" style="background: var(--green);"></div><span>Completed: <b>${doneCount}</b></span></div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--red);"></div><span>Failed: <b>${failCount}</b></span></div>
+          <div class="legend-item"><div class="legend-color" style="background: var(--excused);"></div><span>Excused: <b>${excusedCount}</b></span></div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function toggleDay(habitName, dateStr, anchorEl) {
+  if (!habits[habitName]) return;
+  const habit = habits[habitName];
+  habit.dates = habit.dates || [];
+  habit.fails = habit.fails || [];
+  habit.excused = habit.excused || [];
+  habit.records = habit.records || {};
+
+  const isDone = habit.dates.includes(dateStr);
+  const isFailed = habit.fails.includes(dateStr);
+  const isExcused = habit.excused.includes(dateStr);
+
+  if (habit.type === 'numeric') {
+    const currentVal = habit.records[dateStr] || (isExcused ? 'skip' : '');
+    const input = prompt(`Enter value for "${habitName}" (0 - failed, skip or "-" - excused, empty - clear):`, currentVal);
+    if (input === null) return; 
+    
+    habit.dates = habit.dates.filter(d => d !== dateStr);
+    habit.fails = habit.fails.filter(d => d !== dateStr);
+    habit.excused = habit.excused.filter(d => d !== dateStr);
+    delete habit.records[dateStr];
+
+    const inputLower = input.trim().toLowerCase();
+    if (inputLower === 'skip' || inputLower === '-') habit.excused.push(dateStr);
+    else if (input.trim() !== '') {
+      const num = parseFloat(input);
+      if (!isNaN(num) && num > 0) {
+        habit.records[dateStr] = num;
+        habit.dates.push(dateStr);
+        if (!isDone && anchorEl) launchConfetti(anchorEl);
+      } else if (num === 0) habit.fails.push(dateStr);
+    }
+  } else {
+    if (!isDone && !isFailed && !isExcused) {
+      habit.dates.push(dateStr);
+      if (anchorEl) launchConfetti(anchorEl);
+    } else if (isDone) {
+      habit.dates = habit.dates.filter(d => d !== dateStr);
+      habit.fails.push(dateStr);
+    } else if (isFailed) {
+      habit.fails = habit.fails.filter(d => d !== dateStr);
+      habit.excused.push(dateStr);
+    } else {
+      habit.excused = habit.excused.filter(d => d !== dateStr);
+    }
+  }
+
+  saveHabits();
+  render();
+  if (currentStatsHabit === habitName) renderStats();
+}
+
+function launchConfetti(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const colors = ['#2ecc71', '#27ae60', '#4ade80', '#f1c40f', '#e74c3c', '#3498db', '#9b59b6'];
+
+  for (let i = 0; i < 20; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = cx + 'px';
+    c.style.top = cy + 'px';
+    c.style.background = colors[Math.floor(Math.random() * colors.length)];
+    const angle = (Math.PI * 2 * i) / 20 + Math.random() * 0.5;
+    const distance = 50 + Math.random() * 100;
+    c.style.setProperty('--dx', (Math.cos(angle) * distance) + 'px');
+    c.style.setProperty('--dy', (Math.sin(angle) * distance - 40) + 'px');
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 1300);
+  }
+}
+
+// Theme
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggleEl.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+// --- JAR & BOTTOM NAV LOGIC ---
+let jarData = { stars: 0, fullJars: 0 };
+const starJarEl = document.getElementById('starJar');
+const jarStatusEl = document.getElementById('jarStatus');
+const storageBtn = document.getElementById('storageBtn');
+const storageOverlay = document.getElementById('storageOverlay');
+const storageJarsContainer = document.getElementById('storageJarsContainer');
+const storageText = document.getElementById('storageText');
+const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+
+function loadJarData() {
+  try {
+    const raw = localStorage.getItem(JAR_STORAGE_KEY);
+    if (raw) jarData = JSON.parse(raw);
+  } catch(e) {}
+  renderJar();
+}
+
+function saveJarData() {
+  localStorage.setItem(JAR_STORAGE_KEY, JSON.stringify(jarData));
+}
+
+function renderJar() {
+  starJarEl.innerHTML = '<span class="jar-star">⭐</span>'.repeat(jarData.stars);
+  jarStatusEl.textContent = `${jarData.stars} / 30`;
+}
+
+// Bottom Navigation Switching
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    navItems.forEach(n => n.classList.remove('active'));
+    views.forEach(v => v.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById(item.dataset.target).classList.add('active');
+  });
+});
+
+// Adding a star
+starJarEl.addEventListener('click', () => {
+  if (jarData.stars >= 30) return; // Prevent clicks while auto-emptying
+
+  jarData.stars++;
+  saveJarData();
+  renderJar();
+  launchConfetti(starJarEl);
+
+  if (jarData.stars >= 30) {
+    // Wait for user to see the 30th star, then store and clear automatically
+    setTimeout(() => {
+      jarData.stars = 0;
+      jarData.fullJars++;
+      saveJarData();
+      renderJar();
+    }, 1200);
+  }
+});
+
+// Storage Modal
+storageBtn.addEventListener('click', () => {
+  if (jarData.fullJars === 0) {
+    storageText.textContent = "You haven't filled any jars yet. Keep collecting stars!";
+  } else {
+    storageText.textContent = `You have collected ${jarData.fullJars} full jar${jarData.fullJars > 1 ? 's' : ''}!`;
+  }
+  storageJarsContainer.innerHTML = '<div class="mini-jar">★30</div>'.repeat(jarData.fullJars);
+  storageOverlay.classList.add('active');
+});
+
+document.getElementById('storageClose').addEventListener('click', () => {
+  storageOverlay.classList.remove('active');
+});
+
+// Event Listeners
+addBtnEl.addEventListener('click', addHabit);
+habitInputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') addHabit(); });
+
+habitsListEl.addEventListener('click', (e) => {
+  const circle = e.target.closest('.day-circle');
+  if (circle && circle.dataset.habit && circle.dataset.date) {
+    e.stopPropagation();
+    toggleDay(circle.dataset.habit, circle.dataset.date, circle);
+    return;
+  }
+  const delBtn = e.target.closest('.delete-btn');
+  if (delBtn && delBtn.dataset.delete) {
+    e.stopPropagation();
+    openDeleteModal(delBtn.dataset.delete);
+    return;
+  }
+  const card = e.target.closest('.habit-card');
+  if (card) {
+    const nameEl = card.querySelector('.habit-name');
+    if (nameEl) openStatsModal(nameEl.textContent);
+  }
+});
+
+statsCalendarContainer.addEventListener('click', (e) => {
+  const cell = e.target.closest('.cal-cell');
+  if (cell && cell.dataset.statsDate && currentStatsHabit) {
+    toggleDay(currentStatsHabit, cell.dataset.statsDate, cell);
+  }
+});
+
+modalCancelEl.addEventListener('click', closeDeleteModal);
+modalConfirmEl.addEventListener('click', confirmDelete);
+modalOverlayEl.addEventListener('click', (e) => { if (e.target === modalOverlayEl) closeDeleteModal(); });
+statsCloseEl.addEventListener('click', closeStatsModal);
+statsOverlayEl.addEventListener('click', (e) => { if (e.target === statsOverlayEl) closeStatsModal(); });
+storageOverlay.addEventListener('click', (e) => { if (e.target === storageOverlay) storageOverlay.classList.remove('active'); });
+
+themeToggleEl.addEventListener('click', toggleTheme);
+
+function init() {
+  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+  applyTheme(savedTheme);
+  loadHabits();
+  loadJarData();
+  render();
+}
+
+init();
+</script>
+</body>
+</html>
