@@ -470,7 +470,7 @@
   }
 
   .jar-star {
-    font-size: 18px; /* Slightly smaller stars */
+    font-size: 18px;
     animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   }
 
@@ -636,6 +636,11 @@
   .modal-overlay.active {
     opacity: 1;
     pointer-events: auto;
+  }
+  
+  /* Edit Overlay gets highest priority to be strictly on top */
+  #editOverlay {
+    z-index: 1010;
   }
 
   .modal {
@@ -939,22 +944,6 @@
       </div>
     </div>
   </div>
-  
-  <!-- Edit Habit Modal -->
-  <div class="modal-overlay" id="editOverlay">
-    <div class="modal">
-      <div class="modal-title">Edit Habit</div>
-      <input type="text" id="editHabitInput" class="add-input" style="width:100%; margin-bottom:12px;" placeholder="Habit name...">
-      <select id="editHabitType" class="add-select" style="width:100%;">
-        <option value="boolean">Yes/No</option>
-        <option value="numeric">Numeric</option>
-      </select>
-      <div class="modal-actions">
-        <button class="modal-btn cancel" id="editCancel">Cancel</button>
-        <button class="modal-btn save" id="editSave">Save</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Stats Modal -->
   <div class="modal-overlay" id="statsOverlay">
@@ -972,6 +961,22 @@
       
       <div class="modal-actions">
         <button class="modal-btn cancel" id="statsClose" style="flex: none; width: 100%;">Close</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Edit Habit Modal (Moved below Stats to naturally overlap, plus gets z-index:1010) -->
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal">
+      <div class="modal-title">Edit Habit</div>
+      <input type="text" id="editHabitInput" class="add-input" style="width:100%; margin-bottom:12px;" placeholder="Habit name...">
+      <select id="editHabitType" class="add-select" style="width:100%;">
+        <option value="boolean">Yes/No</option>
+        <option value="numeric">Numeric</option>
+      </select>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="editCancel">Cancel</button>
+        <button class="modal-btn save" id="editSave">Save</button>
       </div>
     </div>
   </div>
@@ -1009,13 +1014,15 @@ const statsOverlayEl = document.getElementById('statsOverlay');
 const statsCloseEl = document.getElementById('statsClose');
 const statsCalendarContainer = document.getElementById('statsCalendarContainer');
 const statsChartContainer = document.getElementById('statsChartContainer');
+const editOverlayEl = document.getElementById('editOverlay');
 
 let habits = {};
 let pendingDelete = null;
 let currentStatsHabit = null;
+let habitBeingEdited = null; // Защищённая переменная для редактирования
 let currentStatsDate = new Date();
 let lastRenderedDate = getToday();
-let draggedHabitName = null; // For Drag & Drop
+let draggedHabitName = null;
 
 // Date Utilities
 function getToday() {
@@ -1243,29 +1250,40 @@ function closeStatsModal() {
 
 document.getElementById('openEditBtn').addEventListener('click', () => {
   if(!currentStatsHabit || !habits[currentStatsHabit]) return;
-  document.getElementById('editHabitInput').value = currentStatsHabit;
-  document.getElementById('editHabitType').value = habits[currentStatsHabit].type || 'boolean';
-  document.getElementById('editOverlay').classList.add('active');
+  habitBeingEdited = currentStatsHabit; // Безопасно сохраняем цель для редактирования
+  document.getElementById('editHabitInput').value = habitBeingEdited;
+  document.getElementById('editHabitType').value = habits[habitBeingEdited].type || 'boolean';
+  editOverlayEl.classList.add('active');
 });
 
 document.getElementById('editCancel').addEventListener('click', () => {
-  document.getElementById('editOverlay').classList.remove('active');
+  editOverlayEl.classList.remove('active');
+  habitBeingEdited = null;
+});
+
+// Закрытие окна редактирования по клику на фон
+editOverlayEl.addEventListener('click', (e) => {
+  if (e.target === editOverlayEl) {
+    editOverlayEl.classList.remove('active');
+    habitBeingEdited = null;
+  }
 });
 
 document.getElementById('editSave').addEventListener('click', () => {
   const newName = document.getElementById('editHabitInput').value.trim();
   const newType = document.getElementById('editHabitType').value;
   
-  if (!newName) return;
-  if (newName !== currentStatsHabit && habits[newName]) {
+  if (!newName || !habitBeingEdited) return; // Убеждаемся, что мы точно знаем, что редактируем
+  
+  if (newName !== habitBeingEdited && habits[newName]) {
       alert("A habit with this name already exists!");
       return;
   }
 
   const newHabits = {};
   for (let key of Object.keys(habits)) {
-      if (key === currentStatsHabit) {
-          newHabits[newName] = { ...habits[currentStatsHabit], type: newType };
+      if (key === habitBeingEdited) {
+          newHabits[newName] = { ...habits[habitBeingEdited], type: newType };
       } else {
           newHabits[key] = habits[key];
       }
@@ -1273,14 +1291,18 @@ document.getElementById('editSave').addEventListener('click', () => {
   
   habits = newHabits;
   saveHabits();
-  document.getElementById('editOverlay').classList.remove('active');
+  editOverlayEl.classList.remove('active');
   
-  currentStatsHabit = newName;
-  const icon = habits[newName].icon;
-  document.getElementById('statsTitle').textContent = icon ? `${icon} ${newName}` : newName;
+  // Если окно статистики всё ещё открыто, обновляем его данные
+  if (currentStatsHabit === habitBeingEdited) {
+      currentStatsHabit = newName;
+      const icon = habits[newName].icon;
+      document.getElementById('statsTitle').textContent = icon ? `${icon} ${newName}` : newName;
+      renderStats();
+  }
   
+  habitBeingEdited = null;
   render();
-  renderStats();
 });
 
 function changeStatsMonth(delta) {
