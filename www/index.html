@@ -53,7 +53,7 @@
     color: var(--text);
     transition: background 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
-    padding-bottom: 80px; /* Space for bottom nav */
+    padding-bottom: 80px; 
   }
 
   /* ===== App Container (Mobile) ===== */
@@ -237,11 +237,16 @@
     padding: 16px;
     margin-bottom: 12px;
     box-shadow: var(--shadow);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s;
+    cursor: grab;
   }
 
   .habit-card:active {
+    cursor: grabbing;
+  }
+  
+  .habit-card.dragging {
+    opacity: 0.5;
     transform: scale(0.98);
   }
 
@@ -259,6 +264,7 @@
     color: var(--text);
     word-break: break-word;
     flex: 1;
+    pointer-events: none; /* Prevents text selection while dragging */
   }
 
   .habit-right {
@@ -464,7 +470,7 @@
   }
 
   .jar-star {
-    font-size: 24px;
+    font-size: 18px; /* Slightly smaller stars */
     animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
   }
 
@@ -477,15 +483,21 @@
     text-align: center;
     color: var(--text-muted);
     font-weight: 600;
-    margin-bottom: 30px;
+    margin-bottom: 16px;
     font-size: 16px;
+  }
+  
+  .jar-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    max-width: 250px;
+    margin: 0 auto;
   }
 
   .storage-btn {
     display: block;
     width: 100%;
-    max-width: 250px;
-    margin: 0 auto;
     padding: 14px;
     border: 2px solid var(--border);
     border-radius: 12px;
@@ -504,6 +516,21 @@
   
   .storage-btn:active {
     transform: scale(0.96);
+  }
+  
+  .remove-star-btn {
+    flex: none;
+    width: 52px;
+    font-size: 18px;
+  }
+
+  .jar-warning {
+    color: var(--red);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    margin-top: 12px;
+    min-height: 16px;
   }
 
   .storage-jars {
@@ -635,6 +662,33 @@
     color: var(--text);
     text-align: center;
   }
+  
+  .stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .stats-header .modal-title { margin-bottom: 0; }
+  
+  .edit-btn {
+    background: var(--green-light);
+    color: var(--green-dark);
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  [data-theme="dark"] .edit-btn {
+      color: var(--green);
+  }
+  
+  .edit-btn:active { transform: scale(0.95); }
 
   .modal-text {
     font-size: 14px;
@@ -669,6 +723,12 @@
 
   .modal-btn.confirm {
     background: var(--red);
+    color: white;
+    flex: 1;
+  }
+  
+  .modal-btn.save {
+    background: var(--green);
     color: white;
     flex: 1;
   }
@@ -854,7 +914,11 @@
       
       <div class="jar-status" id="jarStatus">0 / 30</div>
       
-      <button class="storage-btn" id="storageBtn">Storage</button>
+      <div class="jar-actions">
+          <button class="storage-btn" id="storageBtn">Storage</button>
+          <button class="storage-btn remove-star-btn" id="removeStarBtn" aria-label="Remove star">-</button>
+      </div>
+      <div class="jar-warning" id="jarWarning"></div>
     </div>
   </div>
 
@@ -875,11 +939,30 @@
       </div>
     </div>
   </div>
+  
+  <!-- Edit Habit Modal -->
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal">
+      <div class="modal-title">Edit Habit</div>
+      <input type="text" id="editHabitInput" class="add-input" style="width:100%; margin-bottom:12px;" placeholder="Habit name...">
+      <select id="editHabitType" class="add-select" style="width:100%;">
+        <option value="boolean">Yes/No</option>
+        <option value="numeric">Numeric</option>
+      </select>
+      <div class="modal-actions">
+        <button class="modal-btn cancel" id="editCancel">Cancel</button>
+        <button class="modal-btn save" id="editSave">Save</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Stats Modal -->
   <div class="modal-overlay" id="statsOverlay">
     <div class="modal stats-modal">
-      <div class="modal-title" id="statsTitle">Statistics</div>
+      <div class="stats-header">
+          <div class="modal-title" id="statsTitle">Statistics</div>
+          <button class="edit-btn" id="openEditBtn">Edit ✏️</button>
+      </div>
       
       <div class="stats-section-title">Calendar</div>
       <div id="statsCalendarContainer"></div>
@@ -908,7 +991,7 @@
 <script>
 const STORAGE_KEY = 'lightning_habits_v3';
 const THEME_KEY = 'lightning_theme_v3';
-const JAR_STORAGE_KEY = 'lightning_jars_v1';
+const JAR_STORAGE_KEY = 'lightning_jars_v2';
 
 const habitsListEl = document.getElementById('habitsList');
 const habitInputEl = document.getElementById('habitInput');
@@ -932,6 +1015,7 @@ let pendingDelete = null;
 let currentStatsHabit = null;
 let currentStatsDate = new Date();
 let lastRenderedDate = getToday();
+let draggedHabitName = null; // For Drag & Drop
 
 // Date Utilities
 function getToday() {
@@ -1076,7 +1160,7 @@ function render() {
     const displayName = habit.icon ? `${habit.icon} ${escapeHtml(habit.name)}` : escapeHtml(habit.name);
 
     return `
-      <div class="habit-card">
+      <div class="habit-card" draggable="true" data-name="${escapeAttr(habit.name)}">
         <div class="habit-top">
           <div class="habit-name">${displayName}</div>
           <div class="habit-right">
@@ -1137,6 +1221,7 @@ function confirmDelete() {
   closeDeleteModal();
 }
 
+// Stats & Edit Modal Logic
 function openStatsModal(habitName) {
   const realName = Object.keys(habits).find(k => {
       const display = habits[k].icon ? `${habits[k].icon} ${k}` : k;
@@ -1155,6 +1240,48 @@ function closeStatsModal() {
   currentStatsHabit = null;
   statsOverlayEl.classList.remove('active');
 }
+
+document.getElementById('openEditBtn').addEventListener('click', () => {
+  if(!currentStatsHabit || !habits[currentStatsHabit]) return;
+  document.getElementById('editHabitInput').value = currentStatsHabit;
+  document.getElementById('editHabitType').value = habits[currentStatsHabit].type || 'boolean';
+  document.getElementById('editOverlay').classList.add('active');
+});
+
+document.getElementById('editCancel').addEventListener('click', () => {
+  document.getElementById('editOverlay').classList.remove('active');
+});
+
+document.getElementById('editSave').addEventListener('click', () => {
+  const newName = document.getElementById('editHabitInput').value.trim();
+  const newType = document.getElementById('editHabitType').value;
+  
+  if (!newName) return;
+  if (newName !== currentStatsHabit && habits[newName]) {
+      alert("A habit with this name already exists!");
+      return;
+  }
+
+  const newHabits = {};
+  for (let key of Object.keys(habits)) {
+      if (key === currentStatsHabit) {
+          newHabits[newName] = { ...habits[currentStatsHabit], type: newType };
+      } else {
+          newHabits[key] = habits[key];
+      }
+  }
+  
+  habits = newHabits;
+  saveHabits();
+  document.getElementById('editOverlay').classList.remove('active');
+  
+  currentStatsHabit = newName;
+  const icon = habits[newName].icon;
+  document.getElementById('statsTitle').textContent = icon ? `${icon} ${newName}` : newName;
+  
+  render();
+  renderStats();
+});
 
 function changeStatsMonth(delta) {
   currentStatsDate.setMonth(currentStatsDate.getMonth() + delta);
@@ -1307,8 +1434,8 @@ function toggleTheme() {
   applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
-// --- JAR & BOTTOM NAV LOGIC ---
-let jarData = { stars: 0, fullJars: 0 };
+// --- JAR LOGIC (Max 2 stars/day & Removals) ---
+let jarData = { stars: 0, fullJars: 0, lastStarDate: '', starsToday: 0 };
 const starJarEl = document.getElementById('starJar');
 const jarStatusEl = document.getElementById('jarStatus');
 const storageBtn = document.getElementById('storageBtn');
@@ -1321,8 +1448,14 @@ const views = document.querySelectorAll('.view');
 function loadJarData() {
   try {
     const raw = localStorage.getItem(JAR_STORAGE_KEY);
-    if (raw) jarData = JSON.parse(raw);
+    if (raw) jarData = { ...jarData, ...JSON.parse(raw) };
   } catch(e) {}
+  
+  if (jarData.lastStarDate !== getToday()) {
+      jarData.starsToday = 0;
+      jarData.lastStarDate = getToday();
+      saveJarData();
+  }
   renderJar();
 }
 
@@ -1335,6 +1468,145 @@ function renderJar() {
   jarStatusEl.textContent = `${jarData.stars} / 30`;
 }
 
+function updateJarWarning() {
+  const warningEl = document.getElementById('jarWarning');
+  if (jarData.lastStarDate !== getToday()) {
+      jarData.starsToday = 0;
+      jarData.lastStarDate = getToday();
+  }
+  
+  if (jarData.starsToday >= 2) {
+      const now = new Date();
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const diff = tomorrow - now;
+      const h = String(Math.floor(diff / (1000 * 60 * 60))).padStart(2, '0');
+      const m = String(Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+      const s = String(Math.floor((diff % (1000 * 60)) / 1000)).padStart(2, '0');
+      warningEl.textContent = `Max 2 stars/day. Next in: ${h}:${m}:${s}`;
+  } else {
+      warningEl.textContent = '';
+  }
+}
+
+setInterval(updateJarWarning, 1000);
+
+starJarEl.addEventListener('click', () => {
+  if (jarData.stars >= 30) return; 
+
+  if (jarData.lastStarDate !== getToday()) {
+     jarData.starsToday = 0;
+     jarData.lastStarDate = getToday();
+  }
+
+  if (jarData.starsToday >= 2) {
+     updateJarWarning();
+     return;
+  }
+
+  jarData.stars++;
+  jarData.starsToday++;
+  saveJarData();
+  renderJar();
+  updateJarWarning();
+  launchConfetti(starJarEl);
+
+  if (jarData.stars >= 30) {
+    setTimeout(() => {
+      jarData.stars = 0;
+      jarData.fullJars++;
+      saveJarData();
+      renderJar();
+    }, 1200);
+  }
+});
+
+document.getElementById('removeStarBtn').addEventListener('click', () => {
+   if (jarData.stars > 0) {
+       jarData.stars--;
+       if (jarData.starsToday > 0) jarData.starsToday--;
+       saveJarData();
+       renderJar();
+       updateJarWarning();
+   }
+});
+
+// Drag and Drop Logic
+habitsListEl.addEventListener('dragstart', e => {
+  const card = e.target.closest('.habit-card');
+  if (!card) return;
+  draggedHabitName = card.dataset.name;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => card.classList.add('dragging'), 0);
+});
+
+habitsListEl.addEventListener('dragover', e => {
+  e.preventDefault();
+  const targetCard = e.target.closest('.habit-card');
+  if (targetCard && targetCard.dataset.name !== draggedHabitName) {
+     const bounding = targetCard.getBoundingClientRect();
+     const offset = bounding.y + (bounding.height / 2);
+     if (e.clientY - offset > 0) {
+         targetCard.style.borderBottom = "2px solid var(--green)";
+         targetCard.style.borderTop = "";
+     } else {
+         targetCard.style.borderTop = "2px solid var(--green)";
+         targetCard.style.borderBottom = "";
+     }
+  }
+});
+
+habitsListEl.addEventListener('dragleave', e => {
+  const targetCard = e.target.closest('.habit-card');
+  if (targetCard) {
+     targetCard.style.borderTop = "";
+     targetCard.style.borderBottom = "";
+  }
+});
+
+habitsListEl.addEventListener('dragend', e => {
+  const card = e.target.closest('.habit-card');
+  if(card) card.classList.remove('dragging');
+  Array.from(document.querySelectorAll('.habit-card')).forEach(c => {
+     c.style.borderTop = ""; c.style.borderBottom = "";
+  });
+});
+
+habitsListEl.addEventListener('drop', e => {
+  e.preventDefault();
+  const targetCard = e.target.closest('.habit-card');
+  
+  Array.from(document.querySelectorAll('.habit-card')).forEach(c => {
+     c.style.borderTop = ""; c.style.borderBottom = "";
+  });
+
+  if (targetCard && draggedHabitName && targetCard.dataset.name !== draggedHabitName) {
+    const targetName = targetCard.dataset.name;
+    const bounding = targetCard.getBoundingClientRect();
+    const offset = bounding.y + (bounding.height / 2);
+    const insertAfter = (e.clientY - offset > 0);
+
+    const newHabits = {};
+    for (let key of Object.keys(habits)) {
+       if (key === draggedHabitName) continue;
+       if (key === targetName) {
+          if (insertAfter) {
+             newHabits[key] = habits[key];
+             newHabits[draggedHabitName] = habits[draggedHabitName];
+          } else {
+             newHabits[draggedHabitName] = habits[draggedHabitName];
+             newHabits[key] = habits[key];
+          }
+       } else {
+          newHabits[key] = habits[key];
+       }
+    }
+    habits = newHabits;
+    saveHabits();
+    render();
+  }
+  draggedHabitName = null;
+});
+
 // Bottom Navigation Switching
 navItems.forEach(item => {
   item.addEventListener('click', () => {
@@ -1345,27 +1617,6 @@ navItems.forEach(item => {
   });
 });
 
-// Adding a star
-starJarEl.addEventListener('click', () => {
-  if (jarData.stars >= 30) return; // Prevent clicks while auto-emptying
-
-  jarData.stars++;
-  saveJarData();
-  renderJar();
-  launchConfetti(starJarEl);
-
-  if (jarData.stars >= 30) {
-    // Wait for user to see the 30th star, then store and clear automatically
-    setTimeout(() => {
-      jarData.stars = 0;
-      jarData.fullJars++;
-      saveJarData();
-      renderJar();
-    }, 1200);
-  }
-});
-
-// Storage Modal
 storageBtn.addEventListener('click', () => {
   if (jarData.fullJars === 0) {
     storageText.textContent = "You haven't filled any jars yet. Keep collecting stars!";
